@@ -1,0 +1,84 @@
+version: '3.8'
+
+# Load environment variables from .env file
+env_file:
+  - .env
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        - NODE_ENV=${NODE_ENV:-development}
+    container_name: ${APP_CONTAINER_NAME:-contact-service}
+    ports:
+      - "${APP_PORT:-8000}:${APP_PORT:-8000}"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - DB_HOST=${DB_HOST:-db}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME:-contactdb}
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-rootpassword}
+      - DB_POOL_MAX=${DB_POOL_MAX:-5}
+      - DB_POOL_MIN=${DB_POOL_MIN:-0}
+      - DB_POOL_ACQUIRE=${DB_POOL_ACQUIRE:-30000}
+      - DB_POOL_IDLE=${DB_POOL_IDLE:-10000}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ENABLE_QUERY_LOGGING=${ENABLE_QUERY_LOGGING:-false}
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - app-network
+    volumes:
+      - ./:/usr/src/app
+      - /usr/src/app/node_modules
+    working_dir: /usr/src/app
+
+  db:
+    image: mysql:8.0
+    container_name: ${DB_CONTAINER_NAME:-mysql-db}
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-contactdb}
+      MYSQL_ROOT_HOST: '%'
+      TZ: ${TZ:-UTC}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: always
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: ${PMA_CONTAINER_NAME:-pma}
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 1
+      PMA_USER: ${DB_USER:-root}
+      PMA_PASSWORD: ${DB_PASSWORD:-rootpassword}
+    restart: always
+    ports:
+      - "${PMA_PORT:-8080}:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+    name: ${VOLUME_NAME:-assignment_mysql_data}

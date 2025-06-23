@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log
+.env
+.git
+.gitignore
+.vscode
+coverage
+**/__tests__
+**/*.test.ts
+**/*.spec.ts
+Dockerfile
+docker-compose.yml
